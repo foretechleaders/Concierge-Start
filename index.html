@@ -1,0 +1,24 @@
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Virginia Beach Concierge — Your guide to attractions, events, dining and stays in Coastal Virginia Beach." />
+    <title>Virginia Beach Concierge</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  </head>
+  <body>
+    <!-- Netlify form detection -->
+    <form name="newsletter" netlify hidden>
+      <input type="email" name="email" />
+    </form>
+    <form name="review" netlify hidden>
+      <input type="text" name="username" />
+      <input type="number" name="rating" />
+      <textarea name="comment"></textarea>
+    </form>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
