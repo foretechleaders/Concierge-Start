@@ -1,59 +1,50 @@
-
-import { attractions } from '../data/attractions.js'
-import { useState } from 'react'
-import { toggleFavorite, isFavorite } from '../utils/favorites.js'
+import React from "react";
+import Map from "../components/Map";
 
 export default function Attractions() {
-  const [query, setQuery] = useState('')
-  const [favFlag, setFavFlag] = useState(0)
-
-  const filtered = attractions.map(section => ({
-    ...section,
-    items: section.items.filter(i =>
-      [i.name, i.type, (i.tags||[]).join(','), i.desc].join(' ').toLowerCase().includes(query.toLowerCase())
-    )
-  }))
-
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10">
-      <h1 className="text-2xl font-bold text-vbBlue">Attractions & Things To Do</h1>
-      <input
-        value={query}
-        onChange={e=>setQuery(e.target.value)}
-        placeholder="Search attractions, tags, descriptions..."
-        className="mt-4 border rounded px-3 py-2 w-full md:w-1/2"
-        aria-label="Search attractions"
-      />
+    <div className="min-h-screen bg-vbSand p-6 pt-32">
+      <div className="max-w-6xl mx-auto">
 
-      <div className="mt-8 space-y-8">
-        {filtered.map(section => (
-          <div key={section.category}>
-            <h2 className="text-xl font-semibold">{section.category}</h2>
-            <div className="grid md:grid-cols-2 gap-4 mt-3">
-              {section.items.length ? section.items.map(item => (
-                <div key={item.name} className="border rounded-xl p-4 bg-white">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold">{item.name}</h3>
-                      <p className="text-sm text-slate-600">{item.type}</p>
-                    </div>
-                    <button
-                      className={"px-3 py-1 rounded-full border " + (isFavorite(item.name) ? "bg-vbSky" : "bg-white")}
-                      onClick={()=>{ toggleFavorite(item.name); setFavFlag(x=>x+1) }}
-                      aria-pressed={isFavorite(item.name)}
-                      aria-label="Save to favorites"
-                    >
-                      {isFavorite(item.name) ? "Saved" : "Save"}
-                    </button>
-                  </div>
-                  <p className="text-slate-700 mt-2">{item.desc}</p>
-                  {item.tags?.length ? <p className="text-xs text-slate-500 mt-1">Tags: {item.tags.join(', ')}</p> : null}
-                </div>
-              )) : <p className="text-slate-500">No results in this category.</p>}
-            </div>
+        {/* Page Heading */}
+        <h1 className="text-4xl font-bold text-vbNavy mb-6">
+          Local Attractions
+        </h1>
+
+        <p className="text-lg text-vbNavy/80 mb-8">
+          Explore the top destinations, landmarks, and experiences Virginia Beach has to offer.
+        </p>
+
+        {/* Google Map */}
+        <div className="mb-12">
+          <Map />
+        </div>
+
+        {/* Example Attraction List (optional placeholder — can customize later) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="bg-white shadow rounded-xl p-5 border">
+            <h2 className="text-xl font-semibold">Neptune Statue</h2>
+            <p className="text-sm mt-2 text-gray-600">
+              A must-see landmark at the Virginia Beach Oceanfront.
+            </p>
           </div>
-        ))}
+
+          <div className="bg-white shadow rounded-xl p-5 border">
+            <h2 className="text-xl font-semibold">Virginia Aquarium</h2>
+            <p className="text-sm mt-2 text-gray-600">
+              Explore marine life exhibits, nature trails, and adventure park.
+            </p>
+          </div>
+
+          <div className="bg-white shadow rounded-xl p-5 border">
+            <h2 className="text-xl font-semibold">First Landing State Park</h2>
+            <p className="text-sm mt-2 text-gray-600">
+              Beaches, trails, and stunning nature-preserve scenery.
+            </p>
+          </div>
+        </div>
+
       </div>
     </div>
-  )
+  );
 }
