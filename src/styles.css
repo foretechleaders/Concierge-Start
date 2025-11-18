@@ -1,0 +1,14 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light dark;
+}
+
+/* Focus ring for accessibility */
+.focus-ring:focus {
+  outline: 3px solid #3ec5ff;
+  outline-offset: 2px;
+}
