@@ -1,3 +1,4 @@
+console.log("DEBUG: STRIPE LOADED:", process.env.STRIPE_SECRET_KEY ? "YES" : "NO");
 import Stripe from "stripe";
 
 // Load Stripe with secret key
