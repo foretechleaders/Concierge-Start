@@ -1,17 +1,27 @@
 import Stripe from "stripe";
 
-// Load Stripe using secret key from Netlify environment variables
+// Load Stripe with secret key
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export const handler = async (event) => {
   try {
-    const { priceId } = JSON.parse(event.body);
+    const { priceId, plan, billing } = JSON.parse(event.body);
 
-    if (!priceId) {
-      throw new Error("Missing Stripe priceId");
-    }
+    if (!priceId) throw new Error("Missing Stripe priceId");
 
-    // Create a Stripe Checkout Session (2025+ method)
+    /* --------------------------------------------------
+       FIX ORIGIN (this solves the redirect issue)
+    --------------------------------------------------- */
+    const origin =
+      process.env.URL ||              // Netlify Production
+      process.env.DEPLOY_PRIME_URL || // Netlify Preview Deploys
+      "http://localhost:5173";        // Local Development
+
+    console.log("Resolved origin:", origin);
+
+    /* --------------------------------------------------
+       Create Checkout Session (2025+)
+    --------------------------------------------------- */
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [
@@ -20,8 +30,15 @@ export const handler = async (event) => {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.URL}/services?success=true`,
-      cancel_url: `${process.env.URL}/services?canceled=true`,
+
+      // Add metadata so we know what the user selected
+      metadata: {
+        selected_plan: plan,
+        billing_cycle: billing,
+      },
+
+      success_url: `${origin}/services?success=true&plan=${plan}&billing=${billing}`,
+      cancel_url: `${origin}/services?canceled=true`,
     });
 
     return {
