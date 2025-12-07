@@ -1,57 +1,62 @@
-console.log("DEBUG: STRIPE LOADED:", process.env.STRIPE_SECRET_KEY ? "YES" : "NO");
+// netlify/functions/createCheckout.js
 import Stripe from "stripe";
-
-// Load Stripe with secret key
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export const handler = async (event) => {
   try {
-    const { priceId, plan, billing } = JSON.parse(event.body);
+    console.log("➡️ Stripe Checkout Function Invoked");
 
-    if (!priceId) throw new Error("Missing Stripe priceId");
+    const SECRET_KEY = process.env.STRIPE_SECRET_KEY;
+    if (!SECRET_KEY) {
+      console.error("❌ STRIPE_SECRET_KEY missing");
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: "Stripe secret key missing." }),
+      };
+    }
 
-    /* --------------------------------------------------
-       FIX ORIGIN (this solves the redirect issue)
-    --------------------------------------------------- */
-    const origin =
-      process.env.URL ||              // Netlify Production
-      process.env.DEPLOY_PRIME_URL || // Netlify Preview Deploys
-      "http://localhost:5173";        // Local Development
+    const stripe = new Stripe(SECRET_KEY);
 
-    console.log("Resolved origin:", origin);
+    if (!event.body) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Missing request body" }),
+      };
+    }
 
-    /* --------------------------------------------------
-       Create Checkout Session (2025+)
-    --------------------------------------------------- */
+    const data = JSON.parse(event.body);
+    console.log("➡️ Parsed Body:", data);
+
+    if (!data.priceId) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Missing priceId" }),
+      };
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [
         {
-          price: priceId,
+          price: data.priceId,
           quantity: 1,
         },
       ],
-
-      // Add metadata so we know what the user selected
-      metadata: {
-        selected_plan: plan,
-        billing_cycle: billing,
-      },
-
-      success_url: `${origin}/services?success=true&plan=${plan}&billing=${billing}`,
-      cancel_url: `${origin}/services?canceled=true`,
+      success_url: `https://virginia-beach-concierge-clean.netlify.app/services?success=true`,
+      cancel_url: `https://virginia-beach-concierge-clean.netlify.app/services?canceled=true`,
     });
+
+    console.log("➡️ Session Created:", session.id);
 
     return {
       statusCode: 200,
       body: JSON.stringify({ url: session.url }),
     };
-  } catch (err) {
-    console.error("Stripe Checkout Error:", err.message);
+  } catch (error) {
+    console.error("❌ Stripe Error", error);
 
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
+      body: JSON.stringify({ error: error.message }),
     };
   }
 };
