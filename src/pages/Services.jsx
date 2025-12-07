@@ -1,67 +1,77 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Check, X } from "lucide-react";
 
-/* -------------------------------------------
-   PRICE ID CONFIGURATION (YOUR REAL PRICE IDs)
----------------------------------------------- */
+/* ------------------------------------------------------
+   CORRECTED STRIPE PRICE MAPPING (Based on YOUR dashboard)
+--------------------------------------------------------- */
 
 const PRICE_IDS = {
   premium: {
-    monthly: "price_1SbTyXR6LDjE4lhuXrQU3W09",
-    annual: "price_1SbTxIR6LDjE4lhuSxWkmZbq",
+    monthly: "price_1SbTqkR6LDjE4lhukW9S8ZAi",   // $9.99/mo
+    annual: "price_1SbTvyR6LDjE4lhucS12hyWM",    // $99/yr
   },
   platinum: {
-    monthly: "price_1SbTvyR6LDjE4lhucS12hyWM",
-    annual: "price_1SbTqkR6LDjE4lhukW9S8ZAi",
+    monthly: "price_1SbTxIR6LDjE4lhuSxWkmZbq",   // $24.99/mo
+    annual: "price_1SbTyXR6LDjE4lhuXrQU3W09",    // $249/yr
   },
 };
 
 export default function Services() {
-  const [billing, setBilling] = useState("monthly"); // monthly | annual
+  const [billing, setBilling] = useState("monthly");
+  const [successPlan, setSuccessPlan] = useState(null);
+  const [canceled, setCanceled] = useState(false);
 
-  console.log("Loaded PRICE_IDS:", PRICE_IDS);
+  /* ------------------------------------------------------
+     Detect Success / Cancel Redirects
+  --------------------------------------------------------- */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
 
-  /* -------------------------------------------
-     STRIPE CHECKOUT HANDLER (SERVERLESS)
----------------------------------------------- */
-  async function handleSubscribe(planKey) {
-    console.log("🔔 Subscribe pressed → Plan:", planKey);
-    console.log("Billing selected:", billing);
-
-    const priceId = PRICE_IDS[planKey][billing];
-    console.log("🔥 Stripe priceId:", priceId);
-
-    if (!priceId) {
-      alert("ERROR: Missing Stripe price ID");
-      console.error("Missing PRICE ID for plan:", planKey, "billing:", billing);
-      return;
+    if (params.get("success") === "true") {
+      const plan = params.get("plan");
+      const cycle = params.get("billing");
+      setSuccessPlan({ plan, cycle });
     }
 
-    try {
-      const response = await fetch("/.netlify/functions/createCheckout", {
-        method: "POST",
-        body: JSON.stringify({ priceId }),
-      });
+    if (params.get("canceled") === "true") {
+      setCanceled(true);
+    }
+  }, []);
 
-      const data = await response.json();
-      console.log("Stripe session response:", data);
+  /* ------------------------------------------------------
+     STRIPE CHECKOUT (2025+ serverless version)
+     Sends metadata so confirmation page knows which plan
+--------------------------------------------------------- */
+  async function handleSubscribe(planKey) {
+    console.log("Subscribe clicked →", planKey, billing);
 
-      if (data.url) {
-        console.log("➡️ Redirecting to Stripe Checkout:", data.url);
-        window.location.href = data.url;
-      } else {
-        alert("Checkout failed. See console.");
-        console.error("❌ Checkout error:", data);
-      }
-    } catch (err) {
-      console.error("❌ Network or serverless error:", err);
-      alert("Network error contacting Stripe.");
+    const priceId = PRICE_IDS[planKey][billing];
+    console.log("Using priceId:", priceId);
+
+    const response = await fetch("/.netlify/functions/createCheckout", {
+      method: "POST",
+      body: JSON.stringify({
+        priceId,
+        plan: planKey,
+        billing,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.url) {
+      // Add plan info to success URL
+      const redirectUrl = `${data.url}&plan=${planKey}&billing=${billing}`;
+      window.location.href = redirectUrl;
+    } else {
+      alert("Checkout failed — see console.");
+      console.error(data.error);
     }
   }
 
-  /* -------------------------------------------
-     PRICING PLAN DEFINITIONS
----------------------------------------------- */
+  /* ------------------------------------------------------
+     Pricing Plan Definitions
+--------------------------------------------------------- */
   const plans = [
     {
       name: "Premium",
@@ -100,17 +110,31 @@ export default function Services() {
       ? `$${plan.monthly.toFixed(2)}/mo`
       : `$${plan.annual.toFixed(0)}/yr`;
 
-  /* -------------------------------------------
-     UI RENDER
----------------------------------------------- */
+  /* ------------------------------------------------------
+     UI Rendering
+--------------------------------------------------------- */
   return (
     <div className="max-w-6xl mx-auto px-4 py-12">
-      <h1 className="text-3xl font-bold text-center mb-2">
-        Concierge Services
-      </h1>
+      <h1 className="text-3xl font-bold text-center mb-2">Concierge Services</h1>
       <p className="text-center text-gray-600 mb-10">
         Choose a plan that fits your lifestyle in Virginia Beach.
       </p>
+
+      {/* SUCCESS MESSAGE */}
+      {successPlan && (
+        <div className="mb-6 p-4 bg-green-100 text-green-700 border border-green-300 rounded-lg">
+          <strong>Success!</strong> You subscribed to the{" "}
+          <span className="font-bold capitalize">{successPlan.plan}</span>{" "}
+          ({successPlan.billing}) plan.
+        </div>
+      )}
+
+      {/* CANCEL MESSAGE */}
+      {canceled && (
+        <div className="mb-6 p-4 bg-yellow-100 text-yellow-700 border border-yellow-300 rounded-lg">
+          Subscription canceled before payment. You can try again anytime.
+        </div>
+      )}
 
       {/* Billing Toggle */}
       <div className="flex justify-center items-center mb-10">
