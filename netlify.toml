@@ -1,12 +1,13 @@
-
 [build]
   command = "npm run build"
   publish = "dist"
 
-[build.environment]
-  NODE_VERSION = "20"
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"   # required for Stripe SDK
 
+# Allow client to call serverless function locally and in production
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
+  from = "/.netlify/functions/*"
+  to = "/.netlify/functions/:splat"
   status = 200

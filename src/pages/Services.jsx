@@ -1,21 +1,8 @@
 import React, { useState } from "react";
 import { Check, X } from "lucide-react";
-import { loadStripe } from "@stripe/stripe-js";
 
 /* -------------------------------------------
-   STRIPE INITIALIZATION (WITH DEBUG LOGS)
----------------------------------------------- */
-
-console.log("Initializing Stripe with publishable key...");
-
-const stripePromise = loadStripe(
-  "pk_test_51SIWNmR6LDjE4lhudKUzZdiE25lv9nJSjrgj5nooSNLsvUjRWPnjlWgQuip1yZMzLKttZbFUw84s1CWvF44j4PtY00GOTf6xXD"
-);
-
-console.log("StripePromise:", stripePromise);
-
-/* -------------------------------------------
-   PRICE ID CONFIGURATION
+   PRICE ID CONFIGURATION (YOUR REAL PRICE IDs)
 ---------------------------------------------- */
 
 const PRICE_IDS = {
@@ -30,57 +17,51 @@ const PRICE_IDS = {
 };
 
 export default function Services() {
-  const [billing, setBilling] = useState("monthly"); // Toggle monthly ↔ annual
+  const [billing, setBilling] = useState("monthly"); // monthly | annual
 
-  /* -------------------------------------------
-     DEBUG CHECK: Confirm PRICE_IDS loaded
-  ---------------------------------------------- */
   console.log("Loaded PRICE_IDS:", PRICE_IDS);
 
   /* -------------------------------------------
-     STRIPE CHECKOUT HANDLER (DEBUG VERSION)
-  ---------------------------------------------- */
+     STRIPE CHECKOUT HANDLER (SERVERLESS)
+---------------------------------------------- */
   async function handleSubscribe(planKey) {
-    console.log("Subscribe button clicked!");
-    console.log("Plan Key:", planKey);
-    console.log("Billing Option:", billing);
+    console.log("🔔 Subscribe pressed → Plan:", planKey);
+    console.log("Billing selected:", billing);
 
-    const stripe = await stripePromise;
-    console.log("Stripe Promise Resolved:", stripe);
-
-    if (!stripe) {
-      console.error("❌ ERROR: Stripe failed to initialize.");
-      alert("Stripe could not initialize. Check your publishable key.");
-      return;
-    }
-
-    const priceId = PRICE_IDS[planKey]?.[billing];
-    console.log("Selected PRICE ID:", priceId);
+    const priceId = PRICE_IDS[planKey][billing];
+    console.log("🔥 Stripe priceId:", priceId);
 
     if (!priceId) {
-      console.error("❌ ERROR: PRICE ID not found for", planKey, billing);
-      alert("Stripe Price ID missing. Check PRICE_IDS mapping.");
+      alert("ERROR: Missing Stripe price ID");
+      console.error("Missing PRICE ID for plan:", planKey, "billing:", billing);
       return;
     }
 
-    console.log("Redirecting to Stripe Checkout…");
+    try {
+      const response = await fetch("/.netlify/functions/createCheckout", {
+        method: "POST",
+        body: JSON.stringify({ priceId }),
+      });
 
-    const response = await stripe.redirectToCheckout({
-      lineItems: [{ price: priceId, quantity: 1 }],
-      mode: "subscription",
-      successUrl: `${window.location.origin}/services?success=true`,
-      cancelUrl: `${window.location.origin}/services?canceled=true`,
-    });
+      const data = await response.json();
+      console.log("Stripe session response:", data);
 
-    if (response?.error) {
-      console.error("❌ Stripe Checkout Error:", response.error);
-      alert("Checkout failed. See console for details.");
+      if (data.url) {
+        console.log("➡️ Redirecting to Stripe Checkout:", data.url);
+        window.location.href = data.url;
+      } else {
+        alert("Checkout failed. See console.");
+        console.error("❌ Checkout error:", data);
+      }
+    } catch (err) {
+      console.error("❌ Network or serverless error:", err);
+      alert("Network error contacting Stripe.");
     }
   }
 
   /* -------------------------------------------
-     Pricing Plan Definitions
-  ---------------------------------------------- */
+     PRICING PLAN DEFINITIONS
+---------------------------------------------- */
   const plans = [
     {
       name: "Premium",
@@ -88,6 +69,7 @@ export default function Services() {
       monthly: 9.99,
       annual: 99,
       subtitle: "Save 10% on partners",
+      highlight: false,
       features: {
         concierge: true,
         discounts: true,
@@ -95,7 +77,6 @@ export default function Services() {
         vip: false,
         phone: false,
       },
-      highlight: false,
     },
     {
       name: "Platinum",
@@ -103,6 +84,7 @@ export default function Services() {
       monthly: 24.99,
       annual: 249,
       subtitle: "VIP response",
+      highlight: true,
       features: {
         concierge: true,
         discounts: true,
@@ -110,7 +92,6 @@ export default function Services() {
         vip: true,
         phone: true,
       },
-      highlight: true,
     },
   ];
 
@@ -120,9 +101,8 @@ export default function Services() {
       : `$${plan.annual.toFixed(0)}/yr`;
 
   /* -------------------------------------------
-     RENDER PAGE
-  ---------------------------------------------- */
-
+     UI RENDER
+---------------------------------------------- */
   return (
     <div className="max-w-6xl mx-auto px-4 py-12">
       <h1 className="text-3xl font-bold text-center mb-2">
@@ -136,9 +116,7 @@ export default function Services() {
       <div className="flex justify-center items-center mb-10">
         <span
           className={`px-4 py-2 cursor-pointer ${
-            billing === "monthly"
-              ? "font-semibold text-blue-600"
-              : "text-gray-500"
+            billing === "monthly" ? "font-semibold text-blue-600" : "text-gray-500"
           }`}
           onClick={() => setBilling("monthly")}
         >
@@ -147,9 +125,7 @@ export default function Services() {
 
         <div
           className="mx-3 w-12 h-6 bg-gray-300 rounded-full relative cursor-pointer"
-          onClick={() =>
-            setBilling(billing === "monthly" ? "annual" : "monthly")
-          }
+          onClick={() => setBilling(billing === "monthly" ? "annual" : "monthly")}
         >
           <div
             className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
@@ -160,9 +136,7 @@ export default function Services() {
 
         <span
           className={`px-4 py-2 cursor-pointer ${
-            billing === "annual"
-              ? "font-semibold text-blue-600"
-              : "text-gray-500"
+            billing === "annual" ? "font-semibold text-blue-600" : "text-gray-500"
           }`}
           onClick={() => setBilling("annual")}
         >
