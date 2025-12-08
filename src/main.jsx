@@ -10,10 +10,14 @@ import About from "./pages/About.jsx";
 import Services from "./pages/Services.jsx";
 import Attractions from "./pages/Attractions.jsx";
 import EventsPage from "./pages/Events.jsx";
-import EventDetails from "./pages/EventDetails.jsx"; // ⭐ NEW
+import EventDetails from "./pages/EventDetails.jsx";
 import Reviews from "./pages/Reviews.jsx";
 import Contact from "./pages/Contact.jsx";
 import NotFound from "./pages/NotFound.jsx";
+
+/* NEW Stripe pages */
+import Success from "./pages/Success.jsx";
+import Cancel from "./pages/Cancel.jsx";
 
 /* Components */
 import AttractionDetails from "./components/AttractionDetails.jsx";
@@ -38,7 +42,11 @@ const router = createBrowserRouter([
 
       /* Events */
       { path: "/events", element: <EventsPage /> },
-      { path: "/events/:slug", element: <EventDetails /> }, // ⭐ EVENT DETAILS PAGE
+      { path: "/events/:slug", element: <EventDetails /> },
+
+      /* Stripe Success / Cancel */
+      { path: "/success", element: <Success /> },
+      { path: "/cancel", element: <Cancel /> },
 
       /* Reviews + Contact */
       { path: "/reviews", element: <Reviews /> },

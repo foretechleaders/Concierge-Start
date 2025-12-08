@@ -1,7 +1,18 @@
-import Stripe from "stripe";
+// netlify/functions/createCheckout.js
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
-export const handler = async (event) => {
-  // Allow only POST
+const PRICE_IDS = {
+  platinum: {
+    monthly: "price_1SbTxIR6LDjE4lhuSxWkmZbq",
+    yearly: "price_1SbTyXR6LDjE4lhuXrQU3W09",
+  },
+  premium: {
+    monthly: "price_1SbTqkR6LDjE4lhukW9S8ZAi",
+    yearly: "price_1SbTvyR6LDjE4lhucS12hyWM",
+  },
+};
+
+exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
@@ -9,64 +20,52 @@ export const handler = async (event) => {
     };
   }
 
-  // Validate body presence
-  if (!event.body) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "Missing request body" }),
-    };
-  }
-
-  // Try to parse the JSON safely
-  let data;
   try {
-    data = JSON.parse(event.body);
-  } catch (err) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "Invalid JSON" }),
-    };
-  }
+    const body = JSON.parse(event.body || "{}");
+    const { plan, billing } = body;
 
-  // Extract required fields
-  const { priceId } = data;
+    if (!plan || !billing) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Missing plan or billing" }),
+      };
+    }
 
-  if (!priceId) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "Missing priceId" }),
-    };
-  }
+    const priceId = PRICE_IDS[plan]?.[billing];
+    if (!priceId) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Invalid plan or billing" }),
+      };
+    }
 
-  // Initialize Stripe with your Netlify env var secret key
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const origin =
+      event.headers.origin ||
+      `https://${event.headers["x-forwarded-host"] || "virginia-beach-concierge-clean.netlify.app"}`;
 
-  try {
-    // Create the Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
+      payment_method_types: ["card"],
       line_items: [
         {
           price: priceId,
           quantity: 1,
         },
       ],
-      success_url:
-        "https://virginia-beach-concierge-clean.netlify.app/success",
-      cancel_url:
-        "https://virginia-beach-concierge-clean.netlify.app/cancel",
+      success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/cancel`,
     });
 
-    // Return session URL for redirect
     return {
       statusCode: 200,
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: session.url }),
     };
   } catch (err) {
-    console.error("Stripe Checkout Error:", err);
+    console.error("❌ createCheckout error:", err);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
+      body: JSON.stringify({ error: "Internal server error" }),
     };
   }
 };
