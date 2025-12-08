@@ -15,9 +15,9 @@ import Reviews from "./pages/Reviews.jsx";
 import Contact from "./pages/Contact.jsx";
 import NotFound from "./pages/NotFound.jsx";
 
-/* NEW Stripe pages */
+/* NEW SaaS pages */
+import Account from "./pages/Account.jsx";
 import Success from "./pages/Success.jsx";
-import Cancel from "./pages/Cancel.jsx";
 
 /* Components */
 import AttractionDetails from "./components/AttractionDetails.jsx";
@@ -44,13 +44,13 @@ const router = createBrowserRouter([
       { path: "/events", element: <EventsPage /> },
       { path: "/events/:slug", element: <EventDetails /> },
 
-      /* Stripe Success / Cancel */
-      { path: "/success", element: <Success /> },
-      { path: "/cancel", element: <Cancel /> },
-
       /* Reviews + Contact */
       { path: "/reviews", element: <Reviews /> },
       { path: "/contact", element: <Contact /> },
+
+      /* NEW: Stripe SaaS pages */
+      { path: "/account", element: <Account /> },
+      { path: "/success", element: <Success /> },
 
       /* Catch-all */
       { path: "*", element: <NotFound /> },

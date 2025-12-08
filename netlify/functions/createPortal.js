@@ -1,54 +1,38 @@
-// netlify/functions/createPortal.js
-import Stripe from "stripe";
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
-export async function handler(event) {
-  if (event.httpMethod !== "POST") {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: "Method not allowed" }),
-    };
-  }
-
+exports.handler = async (event) => {
   try {
-    const { sessionId } = JSON.parse(event.body || "{}");
-
-    if (!sessionId) {
+    if (!event.body) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: "Missing sessionId" }),
+        body: JSON.stringify({ error: "Missing request body" }),
       };
     }
 
-    const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId);
+    const { customerId, returnUrl } = JSON.parse(event.body);
 
-    if (!checkoutSession.customer) {
+    if (!customerId) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: "No customer found on session" }),
+        body: JSON.stringify({ error: "Missing Stripe customerId" }),
       };
     }
 
-    const origin =
-      event.headers.origin ||
-      `https://${event.headers["x-forwarded-host"]}`;
-
-    const portal = await stripe.billingPortal.sessions.create({
-      customer: checkoutSession.customer,
-      return_url: `${origin}/services`,
+    // Create portal session
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: returnUrl,
     });
 
     return {
       statusCode: 200,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: portal.url }),
+      body: JSON.stringify({ url: session.url }),
     };
   } catch (err) {
-    console.error("❌ createPortal error:", err);
+    console.error("Portal error:", err);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Internal server error" }),
+      body: JSON.stringify({ error: err.message }),
     };
   }
-}
+};
