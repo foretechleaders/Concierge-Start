@@ -1,7 +1,9 @@
 // netlify/functions/createPortal.js
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+import Stripe from "stripe";
 
-exports.handler = async (event) => {
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+export async function handler(event) {
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
@@ -10,8 +12,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    const body = JSON.parse(event.body || "{}");
-    const { sessionId } = body;
+    const { sessionId } = JSON.parse(event.body || "{}");
 
     if (!sessionId) {
       return {
@@ -20,7 +21,6 @@ exports.handler = async (event) => {
       };
     }
 
-    // Get the checkout session so we can grab the customer id
     const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId);
 
     if (!checkoutSession.customer) {
@@ -30,12 +30,11 @@ exports.handler = async (event) => {
       };
     }
 
-    // Figure out where to send the user back AFTER the portal
     const origin =
       event.headers.origin ||
-      `https://${event.headers["x-forwarded-host"] || "virginia-beach-concierge-clean.netlify.app"}`;
+      `https://${event.headers["x-forwarded-host"]}`;
 
-    const portalSession = await stripe.billingPortal.sessions.create({
+    const portal = await stripe.billingPortal.sessions.create({
       customer: checkoutSession.customer,
       return_url: `${origin}/services`,
     });
@@ -43,7 +42,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: portalSession.url }),
+      body: JSON.stringify({ url: portal.url }),
     };
   } catch (err) {
     console.error("❌ createPortal error:", err);
@@ -52,4 +51,4 @@ exports.handler = async (event) => {
       body: JSON.stringify({ error: "Internal server error" }),
     };
   }
-};
+}

@@ -1,7 +1,9 @@
 // netlify/functions/getSession.js
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+import Stripe from "stripe";
 
-exports.handler = async (event) => {
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+export async function handler(event) {
   if (event.httpMethod !== "GET") {
     return {
       statusCode: 405,
@@ -35,4 +37,4 @@ exports.handler = async (event) => {
       body: JSON.stringify({ error: "Internal server error" }),
     };
   }
-};
+}
