@@ -1,16 +1,27 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function Account() {
   const [customerId, setCustomerId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
+  // Load Stripe customer ID from local storage
   useEffect(() => {
     const stored = localStorage.getItem("stripeCustomerId");
-    if (stored) setCustomerId(stored);
-  }, []);
+    if (!stored) {
+      // If the user is not subscribed, redirect to services
+      navigate("/services");
+      return;
+    }
 
-  const openPortal = async () => {
+    setCustomerId(stored);
+    setLoading(false);
+  }, [navigate]);
+
+  const handlePortal = async () => {
     if (!customerId) {
-      alert("No Stripe customer found.");
+      alert("No subscription found.");
       return;
     }
 
@@ -24,28 +35,24 @@ export default function Account() {
 
     const data = await res.json();
 
-    if (data.url) {
+    if (data?.url) {
       window.location.href = data.url;
     } else {
-      alert("Portal error: " + data.error);
+      alert("Unable to open billing portal: " + data.error);
     }
   };
 
+  if (loading) return <p>Loading your account...</p>;
+
   return (
     <div className="services-page">
-      <h1 className="page-title">Your Account</h1>
+      <h1 className="page-title">My Account</h1>
 
-      {!customerId ? (
-        <p>You do not have an active subscription.</p>
-      ) : (
-        <>
-          <p>Manage your subscription, payment methods, and invoices.</p>
+      <p>Your subscription is active.</p>
 
-          <button className="subscribe-btn" onClick={openPortal}>
-            Manage Billing
-          </button>
-        </>
-      )}
+      <button className="subscribe-btn" onClick={handlePortal}>
+        Manage Billing
+      </button>
     </div>
   );
 }

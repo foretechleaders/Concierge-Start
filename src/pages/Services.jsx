@@ -14,6 +14,7 @@ const PRICE_IDS = {
 
 export default function Services() {
   const [isYearly, setIsYearly] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   const handleSubscribe = async (planKey) => {
     try {
@@ -46,7 +47,7 @@ export default function Services() {
 
   return (
     <div className="services-page">
-      
+
       <h1 className="page-title">Concierge Membership Plans</h1>
 
       <div className="billing-toggle">
@@ -67,6 +68,7 @@ export default function Services() {
 
       <div className="plans-container">
 
+        {/* Premium Plan */}
         <div className="plan-card">
           <h2>Premium</h2>
           <p>Save 10% on partners</p>
@@ -83,6 +85,7 @@ export default function Services() {
           </button>
         </div>
 
+        {/* Platinum Plan */}
         <div className="plan-card">
           <h2>Platinum</h2>
           <p>Priority concierge support</p>
@@ -129,6 +132,50 @@ export default function Services() {
           </tr>
         </tbody>
       </table>
+
+      {/* ------------------------ */}
+      {/*  Newsletter Section      */}
+      {/* ------------------------ */}
+      <div className="newsletter-section">
+        <h2 className="newsletter-title">Join Our Newsletter</h2>
+        <p className="newsletter-subtext">
+          Stay updated on events, discounts, and exclusive concierge perks.
+        </p>
+
+        {submitted ? (
+          <p className="newsletter-success">
+            🎉 Thank you for subscribing!
+          </p>
+        ) : (
+          <form
+            name="newsletter"
+            method="POST"
+            data-netlify="true"
+            className="newsletter-form"
+            onSubmit={() => setSubmitted(true)}
+          >
+            {/* Required hidden input for Netlify detection */}
+            <input type="hidden" name="form-name" value="newsletter" />
+
+            <input
+              type="email"
+              name="email"
+              placeholder="Enter your email"
+              required
+              className="newsletter-input"
+            />
+
+            <button type="submit" className="newsletter-button">
+              Sign Up
+            </button>
+          </form>
+        )}
+      </div>
+
+      {/* Hidden form for Netlify build parsing */}
+      <form name="newsletter" netlify netlify-honeypot="bot-field" hidden>
+        <input type="email" name="email" />
+      </form>
 
     </div>
   );

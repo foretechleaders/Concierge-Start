@@ -1,4 +1,5 @@
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const Stripe = require("stripe");
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 exports.handler = async (event) => {
   try {
@@ -14,22 +15,21 @@ exports.handler = async (event) => {
     if (!customerId) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: "Missing Stripe customerId" }),
+        body: JSON.stringify({ error: "Missing customerId" }),
       };
     }
 
-    // Create portal session
-    const session = await stripe.billingPortal.sessions.create({
+    const portal = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: returnUrl,
+      return_url: returnUrl || "https://example.com/account",
     });
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ url: session.url }),
+      body: JSON.stringify({ url: portal.url }),
     };
   } catch (err) {
-    console.error("Portal error:", err);
+    console.error("Billing portal error:", err);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: err.message }),
