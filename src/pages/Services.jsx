@@ -1,143 +1,151 @@
 import React, { useState } from "react";
-import { loadStripe } from "@stripe/stripe-js";
-import "../styles.css"; // your global CSS
+import "./../styles.css"; // FIXED path (no ./styles.css)
 
-// -------------------------
-// Stripe Price IDs
-// -------------------------
 const PRICE_IDS = {
-  premium: {
-    monthly: "price_1SbTqkR6LDjE4lhukW9S8ZAi",   // $9.99/mo
-    yearly: "price_1SbTvyR6LDjE4lhucS12hyWM",    // $99/yr
+  monthly: {
+    premium: "price_1SbTqkR6LDjE4lhukW9S8ZAi",   // $9.99/mo
+    platinum: "price_1SbTxIR6LDjE4lhuSxWkmZbq",  // $24.99/mo
   },
-  platinum: {
-    monthly: "price_1SbTxIR6LDjE4lhuSxWkmZbq",   // $24.99/mo
-    yearly: "price_1SbTyXR6LDjE4lhuXrQU3W09",    // $249/yr
-  }
+  yearly: {
+    premium: "price_1SbTvyR6LDjE4lhucS12hyWM",   // $99/yr
+    platinum: "price_1SbTyXR6LDjE4lhuXrQU3W09",  // $249/yr
+  },
 };
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
-
 export default function Services() {
-  const [billing, setBilling] = useState("monthly");
+  const [isYearly, setIsYearly] = useState(false);
 
   const handleSubscribe = async (planKey) => {
     try {
-      const stripe = await stripePromise;
+      const billing = isYearly ? "yearly" : "monthly";
+      const priceId = PRICE_IDS[billing][planKey];
 
-      const priceId = PRICE_IDS[planKey][billing];
-
-      const response = await fetch("/.netlify/functions/createCheckout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priceId, plan: planKey, billing }),
-      });
-
-      const data = await response.json();
-      if (data.error) {
-        alert("Checkout Error: " + JSON.stringify(data.error));
+      if (!priceId) {
+        alert("Missing price ID for plan.");
         return;
       }
 
-      await stripe.redirectToCheckout({ sessionId: data.sessionId });
-    } catch (error) {
-      alert("Stripe error: " + error.message);
+      console.log("Selected plan:", planKey, billing, priceId);
+
+      // Call the Netlify checkout function
+      const res = await fetch("/.netlify/functions/createCheckout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceId }),
+      });
+
+      const data = await res.json();
+      console.log("Checkout session response:", data);
+
+      if (data.error) {
+        alert("Stripe error: " + data.error);
+        return;
+      }
+
+      if (!data.url) {
+        alert("Stripe error: No Checkout URL returned.");
+        return;
+      }
+
+      // ⭐ NEW 2025+ Stripe redirect method
+      window.location.href = data.url;
+
+    } catch (err) {
+      console.error(err);
+      alert("Unexpected error. See console.");
     }
   };
 
   return (
-    <div className="container mx-auto py-16 px-4">
-      <h1 className="text-4xl font-bold mb-8">Concierge Membership Plans</h1>
+    <div className="services-page container">
 
-      {/* Billing Toggle */}
-      <div className="flex space-x-4 mb-10">
+      <h1 className="page-title">Concierge Membership Plans</h1>
+
+      {/* BILLING TOGGLE */}
+      <div className="billing-toggle">
         <button
-          onClick={() => setBilling("monthly")}
-          className={`px-4 py-2 rounded ${
-            billing === "monthly"
-              ? "bg-blue-600 text-white"
-              : "bg-gray-200 text-gray-700"
-          }`}
+          className={!isYearly ? "active" : ""}
+          onClick={() => setIsYearly(false)}
         >
           Monthly
         </button>
 
         <button
-          onClick={() => setBilling("yearly")}
-          className={`px-4 py-2 rounded ${
-            billing === "yearly"
-              ? "bg-blue-600 text-white"
-              : "bg-gray-200 text-gray-700"
-          }`}
+          className={isYearly ? "active" : ""}
+          onClick={() => setIsYearly(true)}
         >
           Yearly (Save!)
         </button>
       </div>
 
-      {/* Pricing Cards */}
-      <div className="grid md:grid-cols-2 gap-8">
-        {/* PREMIUM */}
-        <div className="border rounded-lg p-6 shadow-md">
-          <h2 className="text-2xl font-semibold mb-2">Premium</h2>
-          <p className="text-gray-600 mb-4">Save 10% on partners</p>
+      {/* MEMBERSHIP PLANS */}
+      <div className="plans-container">
 
-          <div className="text-3xl font-bold mb-6">
-            {billing === "monthly" ? "$9.99/mo" : "$99/yr"}
+        {/* PREMIUM PLAN */}
+        <div className="plan-card">
+          <h2>Premium</h2>
+          <p>Save 10% on partners</p>
+
+          <div className="price">
+            {isYearly ? "$99/yr" : "$9.99/mo"}
           </div>
 
           <button
+            className="subscribe-btn"
             onClick={() => handleSubscribe("premium")}
-            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
           >
             Subscribe
           </button>
         </div>
 
-        {/* PLATINUM */}
-        <div className="border rounded-lg p-6 shadow-md">
-          <h2 className="text-2xl font-semibold mb-2">Platinum</h2>
-          <p className="text-gray-600 mb-4">Priority concierge support</p>
+        {/* PLATINUM PLAN */}
+        <div className="plan-card">
+          <h2>Platinum</h2>
+          <p>Priority concierge support</p>
 
-          <div className="text-3xl font-bold mb-6">
-            {billing === "monthly" ? "$24.99/mo" : "$249/yr"}
+          <div className="price">
+            {isYearly ? "$249/yr" : "$24.99/mo"}
           </div>
 
           <button
+            className="subscribe-btn"
             onClick={() => handleSubscribe("platinum")}
-            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
           >
             Subscribe
           </button>
         </div>
+
       </div>
 
-      {/* Comparison Table */}
-      <h2 className="text-3xl font-semibold mt-16 mb-6">Compare Plans</h2>
+      {/* COMPARISON TABLE */}
+      <h2 className="compare-title">Compare Plans</h2>
 
-      <table className="table-auto w-full border rounded-lg shadow">
+      <table className="compare-table">
         <thead>
-          <tr className="bg-gray-100">
-            <th className="px-4 py-2 text-left">Feature</th>
-            <th className="px-4 py-2 text-left">Premium</th>
-            <th className="px-4 py-2 text-left">Platinum</th>
+          <tr>
+            <th>Feature</th>
+            <th>Premium</th>
+            <th>Platinum</th>
           </tr>
         </thead>
 
         <tbody>
           <tr>
-            <td className="border px-4 py-2">Partner Discounts</td>
-            <td className="border px-4 py-2">✔</td>
-            <td className="border px-4 py-2">✔</td>
+            <td>Partner Discounts</td>
+            <td>✔</td>
+            <td>✔</td>
           </tr>
+
           <tr>
-            <td className="border px-4 py-2">Concierge Support</td>
-            <td className="border px-4 py-2">Standard</td>
-            <td className="border px-4 py-2">Priority</td>
+            <td>Concierge Support</td>
+            <td>Standard</td>
+            <td>Priority</td>
           </tr>
+
           <tr>
-            <td className="border px-4 py-2">VIP Response</td>
-            <td className="border px-4 py-2">—</td>
-            <td className="border px-4 py-2">✔</td>
+            <td>VIP Response Time</td>
+            <td>—</td>
+            <td>✔</td>
           </tr>
         </tbody>
       </table>
