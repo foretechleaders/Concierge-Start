@@ -1,115 +1,115 @@
 import React, { useState } from "react";
+import { loadStripe } from "@stripe/stripe-js";
+import "./styles.css";
 
+// ✅ Stripe Publishable Key (from Netlify env)
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+
+// ✅ Correct Price IDs (TEST MODE)
 const PRICE_IDS = {
   premium: {
-    monthly: "price_1SbTqkR6LDjE4lhukW9S8ZAi", // $9.99/mo
-    yearly: "price_1SbTvyR6LDjE4lhucS12hyWM",  // $99/yr
+    monthly: "price_1SbTqkR6LDjE4lhukW9S8ZAi",   // $9.99/mo
+    yearly: "price_1SbTvyR6LDjE4lhucS12hyWM",    // $99/yr
   },
   platinum: {
-    monthly: "price_1SbTxIR6LDjE4lhuSxWkmZbq", // $24.99/mo
-    yearly: "price_1SbTyXR6LDjE4lhuXrQU3W09",  // $249/yr
+    monthly: "price_1SbTxIR6LDjE4lhuSxWkmZbq",   // $24.99/mo
+    yearly: "price_1SbTyXR6LDjE4lhuXrQU3W09",    // $249/yr
   },
 };
 
 export default function Services() {
-  const [billingCycle, setBillingCycle] = useState("monthly");
+  const [billing, setBilling] = useState("monthly");
 
-  /** ------------------------------------------------------------------
-   *  HANDLE SUBSCRIBE BUTTON CLICK
-   *  ------------------------------------------------------------------ */
-  async function handleSubscribe(planKey) {
-    console.log("🔵 Subscribe clicked:", planKey);
-    console.log("🟣 Billing cycle:", billingCycle);
-
-    const priceId = PRICE_IDS[planKey]?.[billingCycle];
-
-    console.log("🟡 Selected PRICE ID:", priceId);
+  // ============================================================
+  // 🚀 HANDLE SUBSCRIBE — sends ONLY { priceId } to backend
+  // ============================================================
+  const handleSubscribe = async (planKey) => {
+    const priceId = PRICE_IDS[planKey][billing];
 
     if (!priceId) {
-      console.error("❌ ERROR: Invalid planKey or billing cycle.");
+      alert("Invalid plan or billing option.");
       return;
     }
 
     try {
-      console.log("🛠 Sending request to Netlify function…");
+      const stripe = await stripePromise;
 
       const res = await fetch("/.netlify/functions/createCheckout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priceId }), // ⭐ FIX: REQUIRED BODY
+        body: JSON.stringify({ priceId }),  // ⭐ ONLY sending priceId
       });
 
       const data = await res.json();
-      console.log("🟢 Server response:", data);
 
-      if (data?.url) {
-        console.log("➡ Redirecting to Checkout:", data.url);
-        window.location.href = data.url; // ⭐ Stripe-Approved Redirect
-      } else {
-        console.error("❌ Stripe error:", data);
-        alert("Unable to start checkout: " + JSON.stringify(data));
+      if (data.error || !data.url) {
+        alert("Unable to start checkout: " + JSON.stringify(data.error));
+        return;
       }
+
+      // Redirect to Stripe Checkout
+      window.location.href = data.url;
     } catch (err) {
-      console.error("🔥 Network/Stripe error:", err);
-      alert("Checkout error — see console for details.");
+      console.error("Checkout Error:", err);
+      alert("Unexpected checkout error.");
     }
-  }
+  };
+
+  // Pretty formatting
+  const formatPrice = (price) =>
+    billing === "yearly" ? `$${price}/yr` : `$${price}/mo`;
 
   return (
-    <div className="services-page container mx-auto px-6 py-12">
-      <h1 className="text-4xl font-bold mb-8">Concierge Membership Plans</h1>
+    <div className="services-page container mx-auto py-10">
+      <h1 className="text-4xl font-bold mb-6">Concierge Membership Plans</h1>
 
-      {/* TOGGLE FOR MONTHLY/YEARLY */}
-      <div className="billing-toggle mb-8">
-        <label className="mr-4 font-semibold">Billing:</label>
+      {/* Billing Toggle */}
+      <div className="billing-toggle flex items-center gap-3 mb-8">
         <button
-          className={`px-4 py-2 mr-2 ${
-            billingCycle === "monthly" ? "bg-blue-600 text-white" : "bg-gray-200"
-          }`}
-          onClick={() => setBillingCycle("monthly")}
+          className={`toggle-btn ${billing === "monthly" ? "active" : ""}`}
+          onClick={() => setBilling("monthly")}
         >
           Monthly
         </button>
         <button
-          className={`px-4 py-2 ${
-            billingCycle === "yearly" ? "bg-blue-600 text-white" : "bg-gray-200"
-          }`}
-          onClick={() => setBillingCycle("yearly")}
+          className={`toggle-btn ${billing === "yearly" ? "active" : ""}`}
+          onClick={() => setBilling("yearly")}
         >
           Yearly (Save!)
         </button>
       </div>
 
-      {/* PRICING GRID */}
-      <div className="grid md:grid-cols-2 gap-8">
-        {/* PREMIUM PLAN */}
-        <div className="border rounded-xl p-6 shadow">
-          <h2 className="text-2xl font-bold mb-3">Premium</h2>
+      {/* Pricing Cards */}
+      <div className="pricing-grid grid md:grid-cols-2 gap-8">
+        
+        {/* ⭐ PREMIUM PLAN */}
+        <div className="plan-card p-6 rounded-xl shadow bg-white">
+          <h2 className="text-2xl font-semibold mb-2">Premium</h2>
           <p className="text-gray-600 mb-4">Save 10% on partners</p>
 
-          <p className="text-4xl font-semibold mb-4">
-            {billingCycle === "monthly" ? "$9.99/mo" : "$99/yr"}
+          <p className="price text-4xl font-bold mb-4">
+            {formatPrice(billing === "monthly" ? 9.99 : 99)}
           </p>
 
           <button
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg"
+            className="subscribe-btn bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
             onClick={() => handleSubscribe("premium")}
           >
             Subscribe
           </button>
         </div>
 
-        {/* PLATINUM PLAN */}
-        <div className="border rounded-xl p-6 shadow">
-          <h2 className="text-2xl font-bold mb-3">Platinum</h2>
+        {/* ⭐ PLATINUM PLAN */}
+        <div className="plan-card p-6 rounded-xl shadow bg-white">
+          <h2 className="text-2xl font-semibold mb-2">Platinum</h2>
           <p className="text-gray-600 mb-4">Priority concierge support</p>
 
-          <p className="text-4xl font-semibold mb-4">
-            {billingCycle === "monthly" ? "$24.99/mo" : "$249/yr"}
+          <p className="price text-4xl font-bold mb-4">
+            {formatPrice(billing === "monthly" ? 24.99 : 249)}
           </p>
 
           <button
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg"
+            className="subscribe-btn bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
             onClick={() => handleSubscribe("platinum")}
           >
             Subscribe
@@ -117,33 +117,33 @@ export default function Services() {
         </div>
       </div>
 
-      {/* COMPARISON TABLE */}
-      <div className="comparison mt-16">
-        <h2 className="text-3xl font-bold mb-6">Compare Plans</h2>
+      {/* Comparison Table */}
+      <div className="comparison mt-12">
+        <h2 className="text-3xl font-bold mb-4">Compare Plans</h2>
 
-        <table className="w-full border-collapse">
+        <table className="comparison-table w-full text-left border-collapse">
           <thead>
-            <tr className="bg-gray-100 text-left">
-              <th className="p-4">Feature</th>
-              <th className="p-4">Premium</th>
-              <th className="p-4">Platinum</th>
+            <tr>
+              <th className="p-3 border">Feature</th>
+              <th className="p-3 border">Premium</th>
+              <th className="p-3 border">Platinum</th>
             </tr>
           </thead>
           <tbody>
-            <tr className="border-t">
-              <td className="p-4">Partner Discounts</td>
-              <td className="p-4">✔</td>
-              <td className="p-4">✔</td>
+            <tr>
+              <td className="p-3 border">Partner Discounts</td>
+              <td className="p-3 border text-center">✔️</td>
+              <td className="p-3 border text-center">✔️</td>
             </tr>
-            <tr className="border-t">
-              <td className="p-4">Concierge Support</td>
-              <td className="p-4">Standard</td>
-              <td className="p-4 font-semibold">Priority</td>
+            <tr>
+              <td className="p-3 border">Concierge Support</td>
+              <td className="p-3 border">Standard</td>
+              <td className="p-3 border">Priority</td>
             </tr>
-            <tr className="border-t">
-              <td className="p-4">VIP Response Time</td>
-              <td className="p-4">—</td>
-              <td className="p-4">✔</td>
+            <tr>
+              <td className="p-3 border">VIP Response Time</td>
+              <td className="p-3 border text-center">—</td>
+              <td className="p-3 border text-center">✔️</td>
             </tr>
           </tbody>
         </table>
