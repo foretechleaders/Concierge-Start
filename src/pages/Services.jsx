@@ -1,234 +1,150 @@
-import React, { useState, useEffect } from "react";
-import { Check, X } from "lucide-react";
-
-/* ------------------------------------------------------
-   CORRECTED STRIPE PRICE MAPPING (Based on YOUR dashboard)
---------------------------------------------------------- */
+import React, { useState } from "react";
 
 const PRICE_IDS = {
   premium: {
-    monthly: "price_1SbTqkR6LDjE4lhukW9S8ZAi",   // $9.99/mo
-    annual: "price_1SbTvyR6LDjE4lhucS12hyWM",    // $99/yr
+    monthly: "price_1SbTqkR6LDjE4lhukW9S8ZAi", // $9.99/mo
+    yearly: "price_1SbTvyR6LDjE4lhucS12hyWM",  // $99/yr
   },
   platinum: {
-    monthly: "price_1SbTxIR6LDjE4lhuSxWkmZbq",   // $24.99/mo
-    annual: "price_1SbTyXR6LDjE4lhuXrQU3W09",    // $249/yr
+    monthly: "price_1SbTxIR6LDjE4lhuSxWkmZbq", // $24.99/mo
+    yearly: "price_1SbTyXR6LDjE4lhuXrQU3W09",  // $249/yr
   },
 };
 
 export default function Services() {
-  const [billing, setBilling] = useState("monthly");
-  const [successPlan, setSuccessPlan] = useState(null);
-  const [canceled, setCanceled] = useState(false);
+  const [billingCycle, setBillingCycle] = useState("monthly");
 
-  /* ------------------------------------------------------
-     Detect Success / Cancel Redirects
-  --------------------------------------------------------- */
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-
-    if (params.get("success") === "true") {
-      const plan = params.get("plan");
-      const cycle = params.get("billing");
-      setSuccessPlan({ plan, cycle });
-    }
-
-    if (params.get("canceled") === "true") {
-      setCanceled(true);
-    }
-  }, []);
-
-  /* ------------------------------------------------------
-     STRIPE CHECKOUT (2025+ serverless version)
-     Sends metadata so confirmation page knows which plan
---------------------------------------------------------- */
+  /** ------------------------------------------------------------------
+   *  HANDLE SUBSCRIBE BUTTON CLICK
+   *  ------------------------------------------------------------------ */
   async function handleSubscribe(planKey) {
-    console.log("Subscribe clicked →", planKey, billing);
+    console.log("🔵 Subscribe clicked:", planKey);
+    console.log("🟣 Billing cycle:", billingCycle);
 
-    const priceId = PRICE_IDS[planKey][billing];
-    console.log("Using priceId:", priceId);
+    const priceId = PRICE_IDS[planKey]?.[billingCycle];
 
-    const response = await fetch("/.netlify/functions/createCheckout", {
-      method: "POST",
-      body: JSON.stringify({
-        priceId,
-        plan: planKey,
-        billing,
-      }),
-    });
+    console.log("🟡 Selected PRICE ID:", priceId);
 
-    const data = await response.json();
+    if (!priceId) {
+      console.error("❌ ERROR: Invalid planKey or billing cycle.");
+      return;
+    }
 
-    if (data.url) {
-      // Add plan info to success URL
-      const redirectUrl = `${data.url}&plan=${planKey}&billing=${billing}`;
-      window.location.href = redirectUrl;
-    } else {
-      alert("Checkout failed — see console.");
-      console.error(data.error);
+    try {
+      console.log("🛠 Sending request to Netlify function…");
+
+      const res = await fetch("/.netlify/functions/createCheckout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceId }), // ⭐ FIX: REQUIRED BODY
+      });
+
+      const data = await res.json();
+      console.log("🟢 Server response:", data);
+
+      if (data?.url) {
+        console.log("➡ Redirecting to Checkout:", data.url);
+        window.location.href = data.url; // ⭐ Stripe-Approved Redirect
+      } else {
+        console.error("❌ Stripe error:", data);
+        alert("Unable to start checkout: " + JSON.stringify(data));
+      }
+    } catch (err) {
+      console.error("🔥 Network/Stripe error:", err);
+      alert("Checkout error — see console for details.");
     }
   }
 
-  /* ------------------------------------------------------
-     Pricing Plan Definitions
---------------------------------------------------------- */
-  const plans = [
-    {
-      name: "Premium",
-      key: "premium",
-      monthly: 9.99,
-      annual: 99,
-      subtitle: "Save 10% on partners",
-      highlight: false,
-      features: {
-        concierge: true,
-        discounts: true,
-        priority: false,
-        vip: false,
-        phone: false,
-      },
-    },
-    {
-      name: "Platinum",
-      key: "platinum",
-      monthly: 24.99,
-      annual: 249,
-      subtitle: "VIP response",
-      highlight: true,
-      features: {
-        concierge: true,
-        discounts: true,
-        priority: true,
-        vip: true,
-        phone: true,
-      },
-    },
-  ];
-
-  const priceDisplay = (plan) =>
-    billing === "monthly"
-      ? `$${plan.monthly.toFixed(2)}/mo`
-      : `$${plan.annual.toFixed(0)}/yr`;
-
-  /* ------------------------------------------------------
-     UI Rendering
---------------------------------------------------------- */
   return (
-    <div className="max-w-6xl mx-auto px-4 py-12">
-      <h1 className="text-3xl font-bold text-center mb-2">Concierge Services</h1>
-      <p className="text-center text-gray-600 mb-10">
-        Choose a plan that fits your lifestyle in Virginia Beach.
-      </p>
+    <div className="services-page container mx-auto px-6 py-12">
+      <h1 className="text-4xl font-bold mb-8">Concierge Membership Plans</h1>
 
-      {/* SUCCESS MESSAGE */}
-      {successPlan && (
-        <div className="mb-6 p-4 bg-green-100 text-green-700 border border-green-300 rounded-lg">
-          <strong>Success!</strong> You subscribed to the{" "}
-          <span className="font-bold capitalize">{successPlan.plan}</span>{" "}
-          ({successPlan.billing}) plan.
-        </div>
-      )}
-
-      {/* CANCEL MESSAGE */}
-      {canceled && (
-        <div className="mb-6 p-4 bg-yellow-100 text-yellow-700 border border-yellow-300 rounded-lg">
-          Subscription canceled before payment. You can try again anytime.
-        </div>
-      )}
-
-      {/* Billing Toggle */}
-      <div className="flex justify-center items-center mb-10">
-        <span
-          className={`px-4 py-2 cursor-pointer ${
-            billing === "monthly" ? "font-semibold text-blue-600" : "text-gray-500"
+      {/* TOGGLE FOR MONTHLY/YEARLY */}
+      <div className="billing-toggle mb-8">
+        <label className="mr-4 font-semibold">Billing:</label>
+        <button
+          className={`px-4 py-2 mr-2 ${
+            billingCycle === "monthly" ? "bg-blue-600 text-white" : "bg-gray-200"
           }`}
-          onClick={() => setBilling("monthly")}
+          onClick={() => setBillingCycle("monthly")}
         >
           Monthly
-        </span>
-
-        <div
-          className="mx-3 w-12 h-6 bg-gray-300 rounded-full relative cursor-pointer"
-          onClick={() => setBilling(billing === "monthly" ? "annual" : "monthly")}
+        </button>
+        <button
+          className={`px-4 py-2 ${
+            billingCycle === "yearly" ? "bg-blue-600 text-white" : "bg-gray-200"
+          }`}
+          onClick={() => setBillingCycle("yearly")}
         >
-          <div
-            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
-              billing === "monthly" ? "left-1" : "left-6"
-            }`}
-          />
+          Yearly (Save!)
+        </button>
+      </div>
+
+      {/* PRICING GRID */}
+      <div className="grid md:grid-cols-2 gap-8">
+        {/* PREMIUM PLAN */}
+        <div className="border rounded-xl p-6 shadow">
+          <h2 className="text-2xl font-bold mb-3">Premium</h2>
+          <p className="text-gray-600 mb-4">Save 10% on partners</p>
+
+          <p className="text-4xl font-semibold mb-4">
+            {billingCycle === "monthly" ? "$9.99/mo" : "$99/yr"}
+          </p>
+
+          <button
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg"
+            onClick={() => handleSubscribe("premium")}
+          >
+            Subscribe
+          </button>
         </div>
 
-        <span
-          className={`px-4 py-2 cursor-pointer ${
-            billing === "annual" ? "font-semibold text-blue-600" : "text-gray-500"
-          }`}
-          onClick={() => setBilling("annual")}
-        >
-          Annual
-        </span>
-      </div>
+        {/* PLATINUM PLAN */}
+        <div className="border rounded-xl p-6 shadow">
+          <h2 className="text-2xl font-bold mb-3">Platinum</h2>
+          <p className="text-gray-600 mb-4">Priority concierge support</p>
 
-      {/* Pricing Grid */}
-      <div className="grid md:grid-cols-2 gap-8 mb-16">
-        {plans.map((plan) => (
-          <div
-            key={plan.key}
-            className={`border rounded-2xl shadow-sm p-6 transition hover:shadow-lg bg-white ${
-              plan.highlight ? "border-blue-600 shadow-md" : "border-gray-200"
-            }`}
+          <p className="text-4xl font-semibold mb-4">
+            {billingCycle === "monthly" ? "$24.99/mo" : "$249/yr"}
+          </p>
+
+          <button
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg"
+            onClick={() => handleSubscribe("platinum")}
           >
-            <h2 className="text-xl font-bold mb-1">{plan.name}</h2>
-            <p className="text-gray-500 mb-4">{plan.subtitle}</p>
-
-            <p className="text-3xl font-bold mb-6">{priceDisplay(plan)}</p>
-
-            <button
-              className={`w-full py-3 rounded-xl font-semibold text-white transition mb-6 ${
-                plan.highlight
-                  ? "bg-blue-600 hover:bg-blue-700"
-                  : "bg-gray-800 hover:bg-gray-900"
-              }`}
-              onClick={() => handleSubscribe(plan.key)}
-            >
-              Subscribe
-            </button>
-          </div>
-        ))}
+            Subscribe
+          </button>
+        </div>
       </div>
 
-      {/* Comparison Table */}
-      <h2 className="text-2xl font-bold mb-4 text-center">Compare Plans</h2>
+      {/* COMPARISON TABLE */}
+      <div className="comparison mt-16">
+        <h2 className="text-3xl font-bold mb-6">Compare Plans</h2>
 
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse bg-white rounded-xl shadow text-sm">
+        <table className="w-full border-collapse">
           <thead>
-            <tr className="bg-gray-100 border-b">
-              <th className="p-4 text-left">Feature</th>
-              <th className="p-4 text-center">Premium</th>
-              <th className="p-4 text-center">Platinum</th>
+            <tr className="bg-gray-100 text-left">
+              <th className="p-4">Feature</th>
+              <th className="p-4">Premium</th>
+              <th className="p-4">Platinum</th>
             </tr>
           </thead>
           <tbody>
-            {[
-              { label: "Concierge Support", key: "concierge" },
-              { label: "Local Discounts", key: "discounts" },
-              { label: "Priority Support", key: "priority" },
-              { label: "VIP Response", key: "vip" },
-              { label: "Phone/Text Support", key: "phone" },
-            ].map((row) => (
-              <tr key={row.label} className="border-b last:border-none">
-                <td className="p-4 font-medium">{row.label}</td>
-                {plans.map((plan) => (
-                  <td key={plan.key} className="p-4 text-center">
-                    {plan.features[row.key] ? (
-                      <Check className="w-5 h-5 text-blue-600 mx-auto" />
-                    ) : (
-                      <X className="w-5 h-5 text-gray-400 mx-auto" />
-                    )}
-                  </td>
-                ))}
-              </tr>
-            ))}
+            <tr className="border-t">
+              <td className="p-4">Partner Discounts</td>
+              <td className="p-4">✔</td>
+              <td className="p-4">✔</td>
+            </tr>
+            <tr className="border-t">
+              <td className="p-4">Concierge Support</td>
+              <td className="p-4">Standard</td>
+              <td className="p-4 font-semibold">Priority</td>
+            </tr>
+            <tr className="border-t">
+              <td className="p-4">VIP Response Time</td>
+              <td className="p-4">—</td>
+              <td className="p-4">✔</td>
+            </tr>
           </tbody>
         </table>
       </div>
